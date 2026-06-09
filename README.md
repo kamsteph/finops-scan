@@ -20,40 +20,6 @@ finops-scan connects to your AWS Cost Explorer API (read-only) and produces a ra
 - **Tag coverage score** — what % of your spend has team attribution
 - **Estimated savings** — conservative 20% estimate of actionable waste
 
-## Example output
-╭─────────────────────────────────────────────╮
-│  finops-scan  by fynC                        │
-│  Cloud waste scanner · Read-only             │
-╰─────────────────────────────────────────────╯
-Account: my-aws-account   Period: Last 30 days
-Total 30-day spend        $18,420.55
-Estimated savings          $3,684.11
-Tag coverage                    42%
-Top Services by Spend
-Service          30-day      Daily avg   Trend
-1  EC2 Compute    $9,240.00      $308.00      ↑
-2  RDS            $4,100.00      $136.67      →
-3  S3             $1,820.00       $60.67      ↓
-Waste Opportunities
-#1  EC2 Compute
-Finding:  EC2 Compute spend increased 10%+ over the last 7 days.
-30-day total: $9,240.00
-Action:   Review EC2 utilization. Rightsizing or stopping idle
-instances could reduce this cost by 20-40%.
-#2  All services
-Finding:  58% of spend ($10,683.92) has no team tag.
-You cannot allocate what you cannot attribute.
-Action:   Apply team tags to all resources.
-╭─────────────────────────────────────────────╮
-│  Want this monitored automatically?          │
-│                                              │
-│  fynC tracks your cloud and AI spend         │
-│  continuously, alerts you when costs spike,  │
-│  and attributes every dollar to a team.      │
-│                                              │
-│  → fync.io/early-access                      │
-╰─────────────────────────────────────────────╯
-
 ## Required IAM permission
 
 finops-scan only needs one permission:
@@ -115,7 +81,7 @@ fynC monitors your spend continuously, alerts you on anomalies,
 attributes costs to teams automatically, and tracks AI/LLM spend
 at the model level alongside cloud infrastructure costs.
 
-[Join the early access list →](https://fync.io/early-access)
+[Join the early access list →](https://fync.base44.app)
 
 ## License
 

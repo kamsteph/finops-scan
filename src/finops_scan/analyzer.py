@@ -6,7 +6,7 @@ Separated from fetcher so it can be unit tested without AWS credentials.
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import List, Dict
-from src.finops_scan.fetcher import DailySpend
+from finops_scan.fetcher import DailySpend
 
 
 @dataclass

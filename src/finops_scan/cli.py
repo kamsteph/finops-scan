@@ -4,10 +4,13 @@ Uses Click for argument parsing and command structure.
 Orchestrates: fetcher → analyzer → reporter.
 """
 import sys
-from decimal import Decimal
 
 import click
 from rich.console import Console
+
+from finops_scan.analyzer import CostAnalyzer
+from finops_scan.fetcher import CostExplorerFetcher
+from finops_scan.reporter import WasteReporter
 
 console = Console()
 
@@ -62,10 +65,6 @@ def main(
 
         finops-scan
     """
-    from src.finops_scan.fetcher   import CostExplorerFetcher
-    from src.finops_scan.analyzer  import CostAnalyzer
-    from src.finops_scan.reporter  import WasteReporter
-
     reporter = WasteReporter()
     reporter.print_header(account_id)
 

@@ -13,7 +13,7 @@ from rich.panel import Panel
 from rich.text import Text
 from rich import box
 
-from src.finops_scan.analyzer import ServiceSummary, WasteOpportunity
+from finops_scan.analyzer import ServiceSummary, WasteOpportunity
 
 console = Console()
 
@@ -152,7 +152,7 @@ class WasteReporter:
                 "fynC tracks your cloud and AI spend continuously,\n"
                 "alerts you when costs spike, and attributes every\n"
                 "dollar to a team — without any manual work.\n\n"
-                "[bold #E8460A]→ fync.io/early-access[/bold #E8460A]   "
+                "[bold #E8460A]→ fync.base44.app[/bold #E8460A]   "
                 "[dim](or reply to the Show HN post)[/dim]"
             ),
             border_style="#E8460A",
