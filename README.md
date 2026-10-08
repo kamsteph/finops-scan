@@ -15,10 +15,10 @@ finops-scan --access-key AKIA... --secret-key ...
 
 finops-scan connects to your AWS Cost Explorer API (read-only) and produces a ranked waste report in your terminal:
 
-- **Top services by spend** — with 30-day trend (increasing/decreasing/stable)
-- **Waste opportunities** — ranked by estimated impact, with specific actions
-- **Tag coverage score** — what % of your spend has team attribution
-- **Estimated savings** — conservative 20% estimate of actionable waste
+- **Top services by spend**: with 30-day trend (increasing/decreasing/stable)
+- **Waste opportunities**: ranked by estimated impact, with specific actions
+- **Tag coverage score**: what % of your spend has team attribution
+- **Estimated savings**: conservative 20% estimate of actionable waste
 
 ## Required IAM permission
 
@@ -74,14 +74,14 @@ finops-scan
 ## Built by fynC
 
 finops-scan is the free CLI companion to
-[fynC](https://fync.io) — a FinOps platform for cloud
+[fynC](https://fync-1.onrender.com): a FinOps platform for cloud
 and AI spend visibility.
 
 fynC monitors your spend continuously, alerts you on anomalies,
 attributes costs to teams automatically, and tracks AI/LLM spend
 at the model level alongside cloud infrastructure costs.
 
-[Join the early access list →](https://fync.base44.app)
+[Join the early access list →](https://fync-1.onrender.com)
 
 ## License
 

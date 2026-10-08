@@ -1,5 +1,5 @@
 """
-Reporter — formats and prints the waste report to the terminal.
+Reporter: formats and prints the waste report to the terminal.
 Uses Rich for colored, structured output.
 Separated from analyzer: formatting concerns are independent
 of business logic. Easy to add JSON or CSV output later.
@@ -37,8 +37,8 @@ class WasteReporter:
             Text.from_markup(
                 "[bold #E8460A]finops-scan[/bold #E8460A]  "
                 "[dim]by fynC[/dim]\n"
-                "[dim]Cloud waste scanner · "
-                "Read-only · No data stored[/dim]"
+                "[dim]Cloud waste scanner: "
+                "Read-only (No data stored)[/dim]"
             ),
             border_style="#E8460A",
             padding=(0, 2),
@@ -98,7 +98,7 @@ class WasteReporter:
         for i, s in enumerate(summaries[:top_n], 1):
             # Shorten long AWS service names
             name = s.service.replace(
-                "Amazon Elastic Compute Cloud - Compute", "EC2 Compute"
+                "Amazon Elastic Compute Cloud Compute", "EC2 Compute"
             ).replace(
                 "Amazon Relational Database Service", "RDS"
             ).replace(
@@ -151,8 +151,8 @@ class WasteReporter:
                 "[bold]Want this monitored automatically?[/bold]\n\n"
                 "fynC tracks your cloud and AI spend continuously,\n"
                 "alerts you when costs spike, and attributes every\n"
-                "dollar to a team — without any manual work.\n\n"
-                "[bold #E8460A]→ fync.base44.app[/bold #E8460A]   "
+                "dollar to a team without any manual work.\n\n"
+                "[bold #E8460A] → fync-1.onrender.com[/bold #E8460A]   "
                 "[dim](or reply to the Show HN post)[/dim]"
             ),
             border_style="#E8460A",

@@ -1,7 +1,7 @@
 """
 AWS Cost Explorer fetcher.
 Pulls cost and usage data using the Cost Explorer API.
-Works on any AWS account — no CUR or S3 setup required.
+Works on any AWS account and no CUR or S3 setup required.
 Just needs Access Key + Secret Key with ce:GetCostAndUsage permission.
 """
 from dataclasses import dataclass
@@ -19,25 +19,14 @@ class DailySpend:
     amount:   Decimal
     currency: str = "USD"
 
-
-@dataclass
-class ResourceWaste:
-    service:      str
-    resource_id:  str
-    monthly_cost: Decimal
-    reason:       str
-    savings:      Decimal
-
-
 class CostExplorerFetcher:
     """
     Fetches cost data from AWS Cost Explorer API.
 
     Required IAM permissions:
       ce:GetCostAndUsage
-      ce:GetCostAndUsageWithResources (optional — for resource-level)
 
-    These are read-only permissions. fynC and finops-scan
+    These are read-only permissions. finops-scan
     never write to or modify any AWS resources.
     """
 
@@ -92,27 +81,29 @@ class CostExplorerFetcher:
 
     def fetch_tag_coverage(self) -> dict:
         """
-        Fetches tag coverage — what fraction of spend has team tags.
+        Fetches tag coverage: what fraction of spend has team tags.
+        Cost Explorer has no "tag exists" filter, so we query the spend
+        where the tag is ABSENT and derive tagged = total - untagged.
         Returns dict with tagged_pct, untagged_pct, untagged_spend.
         """
         end   = date.today()
         start = end - timedelta(days=30)
+        period = {"Start": start.isoformat(), "End": end.isoformat()}
 
-        tagged = self._client.get_cost_and_usage(
-            TimePeriod={"Start": start.isoformat(), "End": end.isoformat()},
+        untagged = self._client.get_cost_and_usage(
+            TimePeriod=period,
             Granularity="MONTHLY",
             Metrics=["BlendedCost"],
             Filter={
                 "Tags": {
-                    "Key":    "team",
-                    "Values": ["*"],
-                    "MatchOptions": ["EXISTS"],
+                    "Key":          "team",
+                    "MatchOptions": ["ABSENT"],
                 }
             },
         )
 
         total = self._client.get_cost_and_usage(
-            TimePeriod={"Start": start.isoformat(), "End": end.isoformat()},
+            TimePeriod=period,
             Granularity="MONTHLY",
             Metrics=["BlendedCost"],
         )
@@ -125,18 +116,19 @@ class CostExplorerFetcher:
                 results[0]["Total"]["BlendedCost"]["Amount"]
             )
 
-        tagged_spend = extract(tagged)
-        total_spend  = extract(total)
+        untagged_spend = extract(untagged)
+        total_spend    = extract(total)
 
         if total_spend == Decimal("0"):
             return {"tagged_pct": 0.0, "untagged_pct": 100.0,
                     "untagged_spend": Decimal("0")}
 
-        tagged_pct   = float(tagged_spend / total_spend * 100)
-        untagged_pct = 100.0 - tagged_pct
+        untagged_spend = min(untagged_spend, total_spend)  # guard rounding
+        untagged_pct   = float(untagged_spend / total_spend * 100)
+        tagged_pct     = 100.0 - untagged_pct
 
         return {
             "tagged_pct":     round(tagged_pct, 1),
             "untagged_pct":   round(untagged_pct, 1),
-            "untagged_spend": total_spend - tagged_spend,
+            "untagged_spend": untagged_spend,
         }

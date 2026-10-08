@@ -1,6 +1,6 @@
 """
-Analyzer — derives waste insights from Cost Explorer data.
-No AWS API calls here — pure computation on DailySpend records.
+Analyzer: derives waste insights from Cost Explorer data.
+No AWS API calls here only pure computation on DailySpend records.
 Separated from fetcher so it can be unit tested without AWS credentials.
 """
 from dataclasses import dataclass
@@ -30,7 +30,7 @@ class CostAnalyzer:
     """
     Derives ranked waste opportunities from DailySpend records.
 
-    All methods are pure functions — same input always produces
+    All methods are pure functions.The same input always produces
     same output. No side effects, no API calls.
     Easy to unit test without AWS credentials.
     """
@@ -38,7 +38,7 @@ class CostAnalyzer:
     # Services that typically indicate waste when spend is high
     # relative to their utility
     IDLE_SIGNALS = {
-        "Amazon Elastic Compute Cloud - Compute": "EC2 instances",
+        "Amazon Elastic Compute Cloud Compute": "EC2 instances",
         "Amazon Relational Database Service":     "RDS instances",
         "Amazon ElastiCache":                     "ElastiCache clusters",
         "Amazon Redshift":                        "Redshift clusters",

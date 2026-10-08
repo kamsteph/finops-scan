@@ -14,7 +14,6 @@ from finops_scan.reporter import WasteReporter
 
 console = Console()
 
-
 @click.command()
 @click.option(
     "--access-key",
@@ -46,7 +45,7 @@ def main(
         account_id:  str,
 ) -> None:
     """
-    finops-scan — scan your AWS account for cloud waste in 60 seconds.
+    finops-scan: scan your AWS account for cloud waste in 60 seconds.
 
     Reads cost data via AWS Cost Explorer API (read-only).
     No data is stored. No resources are modified.
@@ -68,7 +67,7 @@ def main(
     reporter = WasteReporter()
     reporter.print_header(account_id)
 
-    # Step 1 — Fetch
+    # Step 1: Fetch
     console.print("[dim]Fetching cost data from AWS Cost Explorer...[/dim]")
     try:
         fetcher = CostExplorerFetcher(
@@ -78,6 +77,7 @@ def main(
         )
         records      = fetcher.fetch_last_30_days()
         tag_coverage = fetcher.fetch_tag_coverage()
+
 
     except Exception as e:
         console.print(f"[red]✗ Failed to connect to AWS:[/red] {e}")
@@ -97,7 +97,7 @@ def main(
         f"[dim]✓ Fetched {len(records)} cost records.[/dim]"
     )
 
-    # Step 2 — Analyze
+    # Step 2: Analyze
     console.print("[dim]Analyzing waste patterns...[/dim]")
     analyzer     = CostAnalyzer()
     summaries    = analyzer.summarize_by_service(records)
@@ -106,7 +106,7 @@ def main(
     savings      = analyzer.estimated_savings(opportunities)
     console.print("[dim]✓ Analysis complete.[/dim]\n")
 
-    # Step 3 — Report
+    # Step 3: Report
     reporter.print_summary(total, savings, tag_coverage)
     reporter.print_top_services(summaries)
     reporter.print_waste_opportunities(opportunities)

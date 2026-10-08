@@ -27,9 +27,9 @@ dependencies = [
 finops-scan = "finops_scan.cli:main"
 
 [project.urls]
-Homepage    = "https://fync.io"
-Repository  = "https://github.com/yourusername/finops-scan"
-"Bug Tracker" = "https://github.com/yourusername/finops-scan/issues"
+Homepage    = "https://fync-1.onrender.com"
+Repository  = "https://github.com/kamsteph/finops-scan"
+"Bug Tracker" = "https://github.com/kamsteph/finops-scan/issues"
 
 [build-system]
 requires      = ["hatchling"]
