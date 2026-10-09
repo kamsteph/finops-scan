@@ -1,6 +1,6 @@
 """
-Analyzer: derives waste insights from Cost Explorer data.
-No AWS API calls here only pure computation on DailySpend records.
+Analyzer — derives waste insights from Cost Explorer data.
+No AWS API calls here — pure computation on DailySpend records.
 Separated from fetcher so it can be unit tested without AWS credentials.
 """
 from dataclasses import dataclass
@@ -30,7 +30,7 @@ class CostAnalyzer:
     """
     Derives ranked waste opportunities from DailySpend records.
 
-    All methods are pure functions.The same input always produces
+    All methods are pure functions — same input always produces
     same output. No side effects, no API calls.
     Easy to unit test without AWS credentials.
     """
@@ -38,7 +38,7 @@ class CostAnalyzer:
     # Services that typically indicate waste when spend is high
     # relative to their utility
     IDLE_SIGNALS = {
-        "Amazon Elastic Compute Cloud Compute": "EC2 instances",
+        "Amazon Elastic Compute Cloud - Compute": "EC2 instances",
         "Amazon Relational Database Service":     "RDS instances",
         "Amazon ElastiCache":                     "ElastiCache clusters",
         "Amazon Redshift":                        "Redshift clusters",
@@ -82,11 +82,15 @@ class CostAnalyzer:
         for service, total in totals.items():
             count = counts[service]
             daily_avg = total / count if count > 0 else Decimal("0")
-            f = first7.get(service, Decimal("0"))
-            l = last7.get(service, Decimal("0"))
-            if l > f * Decimal("1.10"):
+            first = first7.get(service, Decimal("0"))
+            last  = last7.get(service, Decimal("0"))
+            if first == 0:
+                # No spend in the first week: no baseline to compare with
+                # (e.g. a service that started mid-month), so no trend claim.
+                trend = "stable"
+            elif last > first * Decimal("1.10"):
                 trend = "increasing"
-            elif l < f * Decimal("0.90"):
+            elif last < first * Decimal("0.90"):
                 trend = "decreasing"
             else:
                 trend = "stable"
@@ -106,21 +110,20 @@ class CostAnalyzer:
             tag_coverage: dict,
     ) -> List[WasteOpportunity]:
         """
-        Produces ranked waste opportunities from service summaries.
-        Each opportunity has a specific finding and action.
+        Produces waste opportunities from service summaries, ranked by
+        monthly_cost (highest first). Each has a specific finding and action.
         """
         opportunities: List[WasteOpportunity] = []
-        rank = 1
 
         # Opportunity 1: increasing spend on compute services
         for s in summaries:
             if s.trend == "increasing" and s.service in self.IDLE_SIGNALS:
                 name = self.IDLE_SIGNALS[s.service]
                 opportunities.append(WasteOpportunity(
-                    rank=rank,
+                    rank=0,  # assigned after sorting below
                     service=s.service,
                     finding=(
-                        f"{name} spend increased 10%+ over the last 7 days. "
+                        f"{name} spend rose 10%+ in the last 7 days vs. the first 7. "
                         f"30-day total: ${s.total_30d:,.2f}"
                     ),
                     monthly_cost=s.total_30d,
@@ -130,13 +133,12 @@ class CostAnalyzer:
                         f"could reduce this cost by 20-40%."
                     ),
                 ))
-                rank += 1
 
         # Opportunity 2: high spend on data transfer
         for s in summaries:
             if "Data Transfer" in s.service and s.total_30d > Decimal("100"):
                 opportunities.append(WasteOpportunity(
-                    rank=rank,
+                    rank=0,  # assigned after sorting below
                     service=s.service,
                     finding=(
                         f"Data transfer cost ${s.total_30d:,.2f} in 30 days. "
@@ -150,13 +152,12 @@ class CostAnalyzer:
                         "data transfer charges."
                     ),
                 ))
-                rank += 1
 
         # Opportunity 3: low tag coverage
         if tag_coverage.get("untagged_pct", 100) > 20:
             untagged = tag_coverage.get("untagged_spend", Decimal("0"))
             opportunities.append(WasteOpportunity(
-                rank=rank,
+                rank=0,  # assigned after sorting below
                 service="All services",
                 finding=(
                     f"{tag_coverage['untagged_pct']}% of spend "
@@ -170,16 +171,16 @@ class CostAnalyzer:
                     "based on resource naming patterns."
                 ),
             ))
-            rank += 1
 
         # Opportunity 4: AI services with no visibility
         ai_spend = sum(
-            s.total_30d for s in summaries
-            if any(ai in s.service for ai in self.AI_SERVICES)
+            (s.total_30d for s in summaries
+             if any(ai in s.service for ai in self.AI_SERVICES)),
+            Decimal("0"),
         )
         if ai_spend > Decimal("0"):
             opportunities.append(WasteOpportunity(
-                rank=rank,
+                rank=0,  # assigned after sorting below
                 service="AI Services",
                 finding=(
                     f"${ai_spend:,.2f} spent on AI services in 30 days "
@@ -193,7 +194,11 @@ class CostAnalyzer:
                     "which model gives the best cost/quality ratio."
                 ),
             ))
-            rank += 1
+
+        # Rank by impact: biggest dollar amount first, then number them.
+        opportunities.sort(key=lambda o: o.monthly_cost, reverse=True)
+        for i, opp in enumerate(opportunities, 1):
+            opp.rank = i
 
         return opportunities[:10]  # top 10 only
 

@@ -4,8 +4,8 @@ No AWS credentials needed — pure computation tests.
 """
 import pytest
 from decimal import Decimal
-from src.finops_scan.fetcher import DailySpend
-from src.finops_scan.analyzer import CostAnalyzer
+from finops_scan.fetcher import DailySpend
+from finops_scan.analyzer import CostAnalyzer, WasteOpportunity
 
 
 def make_records(service: str, days: int, amount: str) -> list:
@@ -96,7 +96,6 @@ class TestTotalSpend:
 class TestEstimatedSavings:
 
     def test_twenty_percent_of_waste(self, analyzer):
-        from src.finops_scan.analyzer import WasteOpportunity
         opps = [
             WasteOpportunity(
                 rank=1,
@@ -108,3 +107,62 @@ class TestEstimatedSavings:
         ]
         savings = analyzer.estimated_savings(opps)
         assert savings == Decimal("200.00")
+
+
+def make_growing(service: str, early: str = "5.00", late: str = "15.00") -> list:
+    """7 early days and 7 late days, so the trend reads 'increasing'."""
+    rows = []
+    for i in range(7):
+        rows.append(DailySpend(date=f"2026-05-{str(i+1).zfill(2)}",
+                               service=service, amount=Decimal(early)))
+    for i in range(7):
+        rows.append(DailySpend(date=f"2026-05-{str(i+22).zfill(2)}",
+                               service=service, amount=Decimal(late)))
+    return rows
+
+
+class TestRankingAndCap:
+
+    def test_cap_of_10_with_real_findings(self, analyzer):
+        records = []
+        # 5 services that trigger rule 1 (increasing + in IDLE_SIGNALS)
+        for name in CostAnalyzer.IDLE_SIGNALS:
+            records += make_growing(name)
+        # 8 services that trigger rule 2 (Data Transfer, > $100 each)
+        for i in range(8):
+            records += make_records(f"Data Transfer {i}", 30, "10.00")
+        summaries = analyzer.summarize_by_service(records)
+        coverage  = {"tagged_pct": 10.0, "untagged_pct": 90.0,
+                     "untagged_spend": Decimal("1000.00")}
+        opps = analyzer.identify_waste(summaries, coverage)
+        # 5 + 8 + 1 (tagging) = 14 candidates, capped to 10
+        assert len(opps) == 10
+
+    def test_ranked_by_cost_descending(self, analyzer):
+        records = (
+                make_growing("Amazon Elastic Compute Cloud - Compute") +
+                make_records("Data Transfer", 30, "100.00")      # $3,000
+        )
+        summaries = analyzer.summarize_by_service(records)
+        coverage  = {"tagged_pct": 100.0, "untagged_pct": 0.0,
+                     "untagged_spend": Decimal("0")}
+        opps = analyzer.identify_waste(summaries, coverage)
+        assert [o.rank for o in opps] == list(range(1, len(opps) + 1))
+        costs = [o.monthly_cost for o in opps]
+        assert costs == sorted(costs, reverse=True)
+        assert opps[0].service == "Data Transfer"
+
+
+class TestTrendEdgeCases:
+
+    def test_new_service_without_first_week_is_stable(self, analyzer):
+        # Spend only appears in the last week of the window.
+        early_other = make_records("S3", 7, "1.00")
+        late_only = [
+            DailySpend(date=f"2026-05-{str(i+22).zfill(2)}",
+                       service="NewService", amount=Decimal("9.00"))
+            for i in range(7)
+        ]
+        summaries = analyzer.summarize_by_service(early_other + late_only)
+        new = [s for s in summaries if s.service == "NewService"][0]
+        assert new.trend == "stable"

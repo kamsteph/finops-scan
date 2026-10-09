@@ -71,7 +71,7 @@ class WasteReporter:
         table.add_row(
             "Tag coverage",
             f"[bold {'green' if tag_coverage['tagged_pct'] >= 80 else 'red'}]"
-            f"{tag_coverage['tagged_pct']}%[/bold]",
+            f"{tag_coverage['tagged_pct']}%[/]",
         )
 
         console.print(Panel(table, title="[bold]Summary[/bold]",

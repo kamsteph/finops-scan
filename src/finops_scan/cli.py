@@ -11,6 +11,9 @@ from rich.console import Console
 from finops_scan.analyzer import CostAnalyzer
 from finops_scan.fetcher import CostExplorerFetcher
 from finops_scan.reporter import WasteReporter
+from botocore.exceptions import ClientError, NoCredentialsError
+from finops_scan.demo import demo_records, demo_tag_coverage
+
 
 console = Console()
 
@@ -18,13 +21,11 @@ console = Console()
 @click.option(
     "--access-key",
     envvar="AWS_ACCESS_KEY_ID",
-    required=True,
     help="AWS Access Key ID (or set AWS_ACCESS_KEY_ID env var)",
 )
 @click.option(
     "--secret-key",
     envvar="AWS_SECRET_ACCESS_KEY",
-    required=True,
     help="AWS Secret Access Key (or set AWS_SECRET_ACCESS_KEY env var)",
 )
 @click.option(
@@ -38,11 +39,18 @@ console = Console()
     default="my-account",
     help="AWS account ID or alias (display only)",
 )
+@click.option(
+    "--demo",
+    is_flag=True,
+    help="Run on built-in sample data. No AWS account or credentials needed."
+)
+
 def main(
         access_key: str,
         secret_key:  str,
         region:      str,
         account_id:  str,
+        demo: bool,
 ) -> None:
     """
     finops-scan: scan your AWS account for cloud waste in 60 seconds.
@@ -64,38 +72,67 @@ def main(
 
         finops-scan
     """
+    if demo:
+        if account_id == "my-account":
+            account_id = "demo-account"
+    elif not (access_key and secret_key):
+        raise click.UsageError(
+            "Missing AWS credentials. Pass --access-key and --secret-key, "
+            "set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, "
+            "or try --demo to see a sample report."
+        )
+
     reporter = WasteReporter()
     reporter.print_header(account_id)
 
-    # Step 1: Fetch
-    console.print("[dim]Fetching cost data from AWS Cost Explorer...[/dim]")
-    try:
-        fetcher = CostExplorerFetcher(
-            aws_access_key=access_key,
-            aws_secret_key=secret_key,
-            region=region,
-        )
-        records      = fetcher.fetch_last_30_days()
-        tag_coverage = fetcher.fetch_tag_coverage()
-
-
-    except Exception as e:
-        console.print(f"[red]✗ Failed to connect to AWS:[/red] {e}")
+    # Step 1: Fetch (or load demo data)
+    if demo:
         console.print(
-            "[dim]Check your credentials and ensure "
-            "ce:GetCostAndUsage permission is attached.[/dim]"
+            "[bold yellow]DEMO MODE: sample data, not your AWS account.[/bold yellow]"
         )
-        sys.exit(1)
+        records      = demo_records()
+        tag_coverage = demo_tag_coverage(records)
+    else:
+        console.print("[dim]Fetching cost data from AWS Cost Explorer...[/dim]")
+        try:
+            fetcher = CostExplorerFetcher(
+                aws_access_key=access_key,
+                aws_secret_key=secret_key,
+                region=region,
+            )
+            records      = fetcher.fetch_last_30_days()
+            tag_coverage = fetcher.fetch_tag_coverage()
 
-    if not records:
-        console.print(
-            "[yellow]No cost data found for the last 30 days.[/yellow]"
-        )
-        sys.exit(0)
-
-    console.print(
-        f"[dim]✓ Fetched {len(records)} cost records.[/dim]"
-    )
+        except NoCredentialsError:
+            console.print(
+                "[red]✗ No AWS credentials found.[/red] "
+                "Set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, "
+                "or pass --access-key and --secret-key."
+            )
+            sys.exit(1)
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            if code in ("UnrecognizedClientException", "InvalidClientTokenId",
+                        "SignatureDoesNotMatch"):
+                console.print(
+                    "[red]✗ Invalid AWS credentials.[/red] "
+                    "Re-check the access key and secret key."
+                )
+            elif code in ("AccessDeniedException", "AccessDenied"):
+                console.print(
+                    "[red]✗ Permission denied.[/red] "
+                    "Attach a policy allowing ce:GetCostAndUsage to this user."
+                )
+            else:
+                console.print(f"[red]✗ AWS error ({code}):[/red] {e}")
+                console.print(
+                    "[dim]Unexpected error. Please open an issue on GitHub.[/dim]"
+                )
+            sys.exit(1)
+        except Exception as e:
+            console.print(f"[red]✗ Unexpected error:[/red] {e}")
+            console.print("[dim]Please open an issue on GitHub.[/dim]")
+            sys.exit(1)
 
     # Step 2: Analyze
     console.print("[dim]Analyzing waste patterns...[/dim]")
